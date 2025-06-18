@@ -37,14 +37,14 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
         template = template_orig
 
     w, h = template.shape[::-1]
-    jump_frames = int(30 * fps)  # 30s
+    jump_frames = int(1 * fps)  # 30s
     cooldown_frames = int(120 * fps)  # skip 2 min after match
 
     coarse_matches = []
     frame_idx = 0
     start_time = time.time()
 
-    log_callback("⏱ Première passe : détection rapide avec sauts de 30s...\n")
+    log_callback("⏱ Première passe : détection rapide avec sauts de 1s...\n")
     while True:
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
         ret, frame = cap.read()
