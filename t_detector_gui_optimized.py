@@ -8,6 +8,7 @@ import time
 import os
 import subprocess
 import sys
+from PIL import Image, ImageDraw
 
 output_path = os.path.expanduser("~/Documents/refined_t_timestamps.txt")
 _MASK_STORE = os.path.expanduser("~/.t_detector_last_mask.txt")
@@ -25,6 +26,38 @@ def open_results_file(path, log_callback):
         log_callback(f"📂 Ouverture du fichier : {path}")
     except Exception as e:
         log_callback(f"⚠️ Impossible d'ouvrir automatiquement le fichier : {e}")
+
+
+def generate_t_template_from_video(video_path, output_path="t_template_generated.png", y_ratio=0.75):
+    """Generate a black T template from the first frame of a video."""
+    cap = cv2.VideoCapture(video_path)
+    success, frame = cap.read()
+    cap.release()
+
+    if not success:
+        raise ValueError(f"Impossible de lire la vidéo : {video_path}")
+
+    height, width = frame.shape[:2]
+    thickness = int(width * 0.01)
+    y_bar = int(height * y_ratio)
+    x_center = width // 2
+
+    img = Image.new("RGBA", (width, height), (255, 255, 255, 0))
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle(
+        [(0, y_bar - thickness // 2), (width, y_bar + thickness // 2)],
+        fill=(0, 0, 0, 255),
+    )
+
+    draw.rectangle(
+        [(x_center - thickness // 2, 0), (x_center + thickness // 2, y_bar)],
+        fill=(0, 0, 0, 255),
+    )
+
+    img.save(output_path)
+    print(f"✅ Template T généré : {output_path}")
+    return output_path
 
 def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor, log_callback):
     cap = cv2.VideoCapture(video_path)
@@ -133,6 +166,23 @@ def run_gui():
             except OSError:
                 pass
 
+    def generate_template():
+        path = video_path.get()
+        if not path:
+            log_callback("⚠️ Sélectionnez d'abord une vidéo")
+            return
+        try:
+            out = generate_t_template_from_video(path)
+            template_path.set(out)
+            try:
+                with open(_MASK_STORE, "w") as f:
+                    f.write(out)
+            except OSError:
+                pass
+            log_callback(f"🆕 Template généré : {out}")
+        except Exception as e:
+            log_callback(f"⚠️ Erreur génération template : {e}")
+
     def launch_detection():
         detect_button.config(state=tk.DISABLED)
         log_text.delete(1.0, tk.END)
@@ -180,6 +230,7 @@ def run_gui():
     ttk.Label(root, text="🖼 Select T Template (white areas ignored):").pack(anchor="w", padx=10)
     ttk.Entry(root, textvariable=template_path, width=60).pack(padx=10)
     ttk.Button(root, text="Browse", command=browse_template).pack(pady=2)
+    ttk.Button(root, text="Generate from Video", command=generate_template).pack(pady=2)
 
     ttk.Label(root, text="🎚 Detection Threshold:").pack(anchor="w", padx=10, pady=(10, 0))
     threshold_slider = ttk.Scale(root, from_=0.5, to=0.99, orient="horizontal")
