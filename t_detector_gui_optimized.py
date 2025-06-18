@@ -6,7 +6,9 @@ from tkinter import filedialog, ttk
 import threading
 import time
 import os
+
 output_path = os.path.expanduser("~/Documents/refined_t_timestamps.txt")
+_MASK_STORE = os.path.expanduser("~/.t_detector_last_mask.txt")
 
 def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor, log_callback):
     cap = cv2.VideoCapture(video_path)
@@ -49,7 +51,7 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
             frame_idx += jump_frames
 
     cap.release()
-    log_callback(f"\n⏱ Fin première passe ({time.time() - start_time:.1f}s). Matches bruts : {{len(coarse_matches)}}\n")
+    log_callback(f"\n⏱ Fin première passe ({time.time() - start_time:.1f}s). Matches bruts : {len(coarse_matches)}\n")
 
     cap = cv2.VideoCapture(video_path)
     refined_matches = []
@@ -63,7 +65,7 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
         best_score = -1
         best_frame = -1
         step = int(fps)  # 1s
-        log_callback(f"\n📍 Recherche entre {start_frame/fps:.2f}}s et {{end_frame/fps:.2f}s...")
+        log_callback(f"\n📍 Recherche entre {start_frame/fps:.2f}s et {end_frame/fps:.2f}s...")
 
         for f in range(start_frame, end_frame, step):
             cap.set(cv2.CAP_PROP_POS_FRAMES, f)
@@ -84,13 +86,13 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
         if best_frame >= 0:
             refined_ts = best_frame / fps
             refined_matches.append(refined_ts)
-            log_callback(f"🎯 Match précis à {{refined_ts:.2f}}s (score={{best_score:.3f}})")
+            log_callback(f"🎯 Match précis à {refined_ts:.2f}s (score={best_score:.3f})")
 
     cap.release()
 
     with open(output_path, "w") as f:
         for t in refined_matches:
-            f.write(f"{{t:.3f}}\n")
+            f.write(f"{t:.3f}\n")
 
     log_callback(f"\n✅ Détection terminée. Résultats enregistrés dans refined_t_timestamps.txt")
 
@@ -105,6 +107,11 @@ def run_gui():
         path = filedialog.askopenfilename(filetypes=[("PNG files", "*.png")])
         if path:
             template_path.set(path)
+            try:
+                with open(_MASK_STORE, "w") as f:
+                    f.write(path)
+            except OSError:
+                pass
 
     def launch_detection():
         detect_button.config(state=tk.DISABLED)
@@ -114,9 +121,17 @@ def run_gui():
         scale_val = scale_var.get()
         scale_factor = {"1x": 1.0, "1/2": 0.5, "1/4": 0.25, "1/8": 0.125}[scale_val]
 
-        threading.Thread(target=detect_coarse_and_refined, args=(
-            video_path.get(), template_path.get(), threshold, scale_factor, log_callback
-        ), daemon=True).start()
+        def run_detection():
+            detect_coarse_and_refined(
+                video_path.get(),
+                template_path.get(),
+                threshold,
+                scale_factor,
+                log_callback,
+            )
+            root.after(0, lambda: detect_button.config(state=tk.NORMAL))
+
+        threading.Thread(target=run_detection, daemon=True).start()
 
     def log_callback(msg):
         log_text.insert(tk.END, msg + "\n")
@@ -126,7 +141,17 @@ def run_gui():
     root.title("Optimized Inverted T Detection")
 
     video_path = tk.StringVar()
-    template_path = tk.StringVar(value="inverted_t_template_1percent.png")
+    default_template = "inverted_t_template_1percent.png"
+    if os.path.exists(_MASK_STORE):
+        try:
+            with open(_MASK_STORE, "r") as f:
+                stored = f.read().strip()
+                if stored:
+                    default_template = stored
+        except OSError:
+            pass
+
+    template_path = tk.StringVar(value=default_template)
 
     ttk.Label(root, text="🎞 Select Video File:").pack(anchor="w", padx=10)
     ttk.Entry(root, textvariable=video_path, width=60).pack(padx=10)
