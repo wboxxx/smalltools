@@ -6,9 +6,25 @@ from tkinter import filedialog, ttk
 import threading
 import time
 import os
+import subprocess
+import sys
 
 output_path = os.path.expanduser("~/Documents/refined_t_timestamps.txt")
 _MASK_STORE = os.path.expanduser("~/.t_detector_last_mask.txt")
+
+
+def open_results_file(path, log_callback):
+    """Try to open the results file with the default system application."""
+    try:
+        if os.name == "nt":
+            os.startfile(path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+        log_callback(f"📂 Ouverture du fichier : {path}")
+    except Exception as e:
+        log_callback(f"⚠️ Impossible d'ouvrir automatiquement le fichier : {e}")
 
 def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor, log_callback):
     cap = cv2.VideoCapture(video_path)
@@ -95,6 +111,7 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
             f.write(f"{t:.3f}\n")
 
     log_callback(f"\n✅ Détection terminée. Résultats enregistrés dans refined_t_timestamps.txt")
+    open_results_file(output_path, log_callback)
 
 
 def run_gui():
