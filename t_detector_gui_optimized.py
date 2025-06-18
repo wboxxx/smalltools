@@ -30,11 +30,14 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     template_orig = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
+    _, mask_orig = cv2.threshold(template_orig, 250, 255, cv2.THRESH_BINARY_INV)
 
     if scale_factor != 1.0:
         template = cv2.resize(template_orig, (0, 0), fx=scale_factor, fy=scale_factor)
+        mask = cv2.resize(mask_orig, (0, 0), fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_NEAREST)
     else:
         template = template_orig
+        mask = mask_orig
 
     w, h = template.shape[::-1]
     jump_frames = int(1 * fps)  # 30s
@@ -55,7 +58,7 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
         if scale_factor != 1.0:
             gray = cv2.resize(gray, (0, 0), fx=scale_factor, fy=scale_factor)
 
-        res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED)
+        res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED, mask=mask)
         _, max_val, _, _ = cv2.minMaxLoc(res)
 
         if max_val >= threshold:
@@ -92,7 +95,7 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
             if scale_factor != 1.0:
                 gray = cv2.resize(gray, (0, 0), fx=scale_factor, fy=scale_factor)
 
-            res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED)
+            res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED, mask=mask)
             _, max_val, _, _ = cv2.minMaxLoc(res)
 
             if max_val >= threshold and (best_score < 0 or max_val > best_score):
@@ -174,7 +177,7 @@ def run_gui():
     ttk.Entry(root, textvariable=video_path, width=60).pack(padx=10)
     ttk.Button(root, text="Browse", command=browse_video).pack(pady=2)
 
-    ttk.Label(root, text="🖼 Select T Template (PNG):").pack(anchor="w", padx=10)
+    ttk.Label(root, text="🖼 Select T Template (white areas ignored):").pack(anchor="w", padx=10)
     ttk.Entry(root, textvariable=template_path, width=60).pack(padx=10)
     ttk.Button(root, text="Browse", command=browse_template).pack(pady=2)
 
