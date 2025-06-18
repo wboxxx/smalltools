@@ -49,7 +49,7 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
             frame_idx += jump_frames
 
     cap.release()
-    log_callback(f"\n⏱ Fin première passe ({time.time() - start_time:.1f}s). Matches bruts : {{len(coarse_matches)}}\n")
+    log_callback(f"\n⏱ Fin première passe ({time.time() - start_time:.1f}s). Matches bruts : {len(coarse_matches)}\n")
 
     cap = cv2.VideoCapture(video_path)
     refined_matches = []
@@ -63,7 +63,7 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
         best_score = -1
         best_frame = -1
         step = int(fps)  # 1s
-        log_callback(f"\n📍 Recherche entre {start_frame/fps:.2f}}s et {{end_frame/fps:.2f}s...")
+        log_callback(f"\n📍 Recherche entre {start_frame/fps:.2f}s et {end_frame/fps:.2f}s...")
 
         for f in range(start_frame, end_frame, step):
             cap.set(cv2.CAP_PROP_POS_FRAMES, f)
@@ -84,13 +84,13 @@ def detect_coarse_and_refined(video_path, template_path, threshold, scale_factor
         if best_frame >= 0:
             refined_ts = best_frame / fps
             refined_matches.append(refined_ts)
-            log_callback(f"🎯 Match précis à {{refined_ts:.2f}}s (score={{best_score:.3f}})")
+            log_callback(f"🎯 Match précis à {refined_ts:.2f}s (score={best_score:.3f})")
 
     cap.release()
 
     with open(output_path, "w") as f:
         for t in refined_matches:
-            f.write(f"{{t:.3f}}\n")
+            f.write(f"{t:.3f}\n")
 
     log_callback(f"\n✅ Détection terminée. Résultats enregistrés dans refined_t_timestamps.txt")
 
