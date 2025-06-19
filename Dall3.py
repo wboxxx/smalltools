@@ -45,7 +45,7 @@ print("🚀 Extraction des frames via ffmpeg...")
 subprocess.run([
     "ffmpeg",
     "-i", VIDEO_PATH,
-    "-vf", f"fps={fps // FRAME_SKIP}",
+    "-vf", f"fps={fps / FRAME_SKIP}",
     os.path.join(TMP_IMG_DIR, "frame_%05d.jpg")
 ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
